@@ -37,7 +37,7 @@
 module TastierMachine.Machine where
 import qualified TastierMachine.Instructions as Instructions
 import Data.Int (Int8, Int16)
-import Data.Char (intToDigit)
+import Data.Char (intToDigit, chr)
 import Numeric (showIntAtBase)
 import Data.Bits (complement)
 import Data.Array ((//), (!), Array, elems)
@@ -45,6 +45,8 @@ import Control.Monad.RWS.Lazy (RWS, put, get, ask, tell, local)
 import System.IO.Unsafe (unsafePerformIO)
 import System.IO (hFlush, stdout)
 import Data.List (intersperse)
+import Debug.Trace
+
 
 debug' m@(Machine rpc rtp rbp imem _ _) = do {
   putStrLn $
@@ -201,6 +203,22 @@ run = do
           tell $ [show $ smem ! (rtp-1)]
           put $ machine { rpc = rpc + 1, rtp = rtp - 1 }
           run
+
+        Instructions.WriteStr  -> do
+          let pointer = smem ! (rtp-1)
+          let stringStart = dmem ! (pointer-3)
+          printString stringStart (pointer-3+1)
+          put $ machine { rpc = rpc + 1, rtp = rtp - 1 }
+          run
+          where
+            printString 1 _ = return()
+            printString n p = 
+              do 
+                let char = dmem ! p
+                let ch = fromIntegral char
+                let display = chr ch
+                tell $ [show display]  
+                printString (n-1) (p+1)       
 
         Instructions.Leave  -> do
           {-
