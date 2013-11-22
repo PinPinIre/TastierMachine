@@ -9,6 +9,9 @@ data Instruction = Add
                  | Equ
                  | Lss
                  | Gtr
+                 | Neq
+                 | Leq
+                 | Geq
                  | Neg
                  | Load
                  | Sto
