@@ -210,18 +210,18 @@ run = do
         Instructions.WriteStr  -> do
           let pointer = smem ! (rtp-1)
           let stringStart = dmem ! (pointer-3)
-          printString stringStart (pointer-3+1)
+          let string = printString stringStart (pointer-3+1)
+          tell [string]
           put $ machine { rpc = rpc + 1, rtp = rtp - 1 }
           run
           where
-            printString 1 _ = return()
+            printString 1 _ = []
             printString n p = 
               do 
                 let char = dmem ! p
                 let ch = fromIntegral char
                 let display = chr ch
-                tell $ [show display]  
-                printString (n-1) (p+1)       
+                display:printString (n-1) (p+1)
 
         Instructions.Leave  -> do
           {-
