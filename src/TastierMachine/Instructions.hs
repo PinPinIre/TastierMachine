@@ -15,11 +15,17 @@ data Instruction = Add
                  | Neg
                  | Load
                  | Sto
+                 | StoI
+                 | LoadI
                  | Call
                  | LoadG
                  | StoG
+                 | Malloc
+                 | Offset
                  | Const
                  | Enter
+                 | ShiftL
+                 | ShiftR
                  | Jmp
                  | FJmp
                  | Ret
@@ -30,6 +36,7 @@ data Instruction = Add
                  | Halt
                  | Dup
                  | Nop
+                 | Pop
                  deriving (Eq, Ord, Show, Enum)
 
 data InstructionWord = Nullary Instruction

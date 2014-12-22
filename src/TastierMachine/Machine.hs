@@ -39,7 +39,7 @@ import qualified TastierMachine.Instructions as Instructions
 import Data.Int (Int8, Int16)
 import Data.Char (intToDigit, chr)
 import Numeric (showIntAtBase)
-import Data.Bits (complement)
+import Data.Bits (complement, shiftR, shiftL)
 import Data.Array ((//), (!), Array, elems)
 import Control.Monad.RWS.Lazy (RWS, put, get, ask, tell, local)
 import System.IO.Unsafe (unsafePerformIO)
@@ -94,6 +94,11 @@ run = do
         Instructions.Dup -> do
           put $ machine { rpc = rpc + 1, rtp = rtp + 1,
                           smem = (smem // [(rtp, smem ! (rtp-1))]) }
+          run
+
+        Instructions.Pop -> do
+          --Instruction to pop the item off the top of the stack
+          put $ machine { rpc = rpc + 1, rtp = rtp - 1}
           run
 
         Instructions.Nop -> do
@@ -157,6 +162,7 @@ run = do
           run
 
         Instructions.Neq    -> do
+          -- Not Equals operator
           let a = smem ! (rtp-1)
           let b = smem ! (rtp-2)
           let result = fromIntegral $ fromEnum (b /= a)
@@ -165,6 +171,7 @@ run = do
           run
 
         Instructions.Geq    -> do
+          -- Greater or equal than operator
           let a = smem ! (rtp-1)
           let b = smem ! (rtp-2)
           let result = fromIntegral $ fromEnum (b >= a)
@@ -173,6 +180,7 @@ run = do
           run
 
         Instructions.Leq    -> do
+          -- Less or equal operator
           let a = smem ! (rtp-1)
           let b = smem ! (rtp-2)
           let result = fromIntegral $ fromEnum (b <= a)
@@ -222,6 +230,103 @@ run = do
                 let ch = fromIntegral char
                 let display = chr ch
                 display:printString (n-1) (p+1)
+
+        Instructions.Malloc -> do
+          -- Memmory allocation instruction
+          let freeMem = (dmem ! 0)  -- Free memory pointer is stored in address 0
+          let a = smem ! (rtp-1)    -- Size of memory to allocate
+          case(compare a 0) of      -- Ensure memory allocates is greater than 0
+            GT -> do
+              put $ machine { rpc = rpc + 1,
+                              dmem = (dmem // [(0, (freeMem+a+1))] // [(freeMem-3, a)]),
+                              smem = (smem // [(rtp-1, freeMem)]) }
+              run
+            _ -> do 
+              error "Cannot allocate a block of memory less than 1"
+
+        Instructions.Offset -> do
+          -- Memmory calculation instruction
+          let address = (smem ! (rtp-2))-3  -- Start of memory block
+          let offset = smem ! (rtp-1)       -- Index value
+          case (compare address 0) of       -- Check if greater than 0. 0 is reserved for the free mem pointer
+            GT -> do
+              let len =  dmem ! (address)
+              case (compare offset 0) of    -- Check if positive or negatice indexing
+                LT ->
+                  case(compare (offset+len) 0) of   
+                    LT ->
+                      error $ "Array index out of bounds. Size " ++ (show len) ++ " accessed " ++ (show offset)
+                    _ -> do
+                      let result = address + offset + len + 1
+                      put $ machine { rpc = rpc + 1, rtp = rtp-1,
+                                      smem = (smem // [(rtp-2, result)]) }
+                      run 
+                _ ->
+                  case(compare offset (len-1)) of   --Check if index within bounds
+                    GT ->
+                      error $ "Array index out of bounds. Size " ++ (show len) ++ " accessed " ++ (show offset)
+                    _ -> do
+                      let result = address + offset + 1
+                      put $ machine { rpc = rpc + 1, rtp = rtp-1,
+                                      smem = (smem // [(rtp-2, result)]) }
+                      run 
+            _ -> do
+              error "Invalid pointer. Maybe you forgot to assign it?"
+
+
+        Instructions.StoI   -> do
+          -- Store value to address on the stack    
+          -- Memmory allocation instruction
+          let result = smem ! (rtp-1)
+          let address = smem ! (rtp-2)
+          put $ machine { rpc = rpc + 1, rtp = rtp - 2, 
+                          dmem = (dmem // [(address, result)]) }
+          run
+
+        Instructions.LoadI  -> do
+          -- Load the address that is on the top of the stack    
+          -- Memmory allocation instruction
+          let address = smem ! (rtp-1)
+          let result = dmem ! (address)
+          put $ machine { rpc = rpc + 1, rtp = rtp, 
+                          smem = (smem // [(rtp - 1, result)]) }
+          run
+
+        Instructions.ShiftR  -> do
+          -- Number of bits to shift by    
+          -- Value to shift
+          let shiftAmount = fromIntegral $ smem ! (rtp-1)   -- Boilerplate: Haskell requires an int for shifting
+          let value = smem ! (rtp-2)
+          case (compare shiftAmount 0) of                   -- Check if positive shift value
+            LT ->
+              error "Cannot shift by a negative value"
+            _ -> do
+              case (compare shiftAmount 16) of              -- Check if shift will fit in 16 bits
+                GT ->
+                  error "Cannot shift by a value greater than 16"
+                _  -> do
+                  let shiftValue = shiftR value shiftAmount
+                  put $ machine { rpc = rpc + 1, rtp = rtp-1, 
+                                  smem = (smem // [(rtp - 2, shiftValue)]) }
+                  run
+
+        Instructions.ShiftL  -> do
+          -- Number of bits to shift by    
+          -- Value to shift
+          let shiftAmount = fromIntegral $ smem ! (rtp-1)   -- Boilerplate: Haskell requires an int for shifting
+          let value = smem ! (rtp-2)
+          case (compare shiftAmount 0) of                   -- Check if positive shift value
+            LT ->
+              error "Cannot shift by a negative value"
+            _ -> do
+              case (compare shiftAmount 16) of              -- Check if shift will fit in 16 bits
+                GT ->
+                  error "Cannot shift by a value greater than 16"
+                _  -> do
+                  let shiftValue = shiftL value shiftAmount
+                  put $ machine { rpc = rpc + 1, rtp = rtp-1, 
+                                  smem = (smem // [(rtp - 2, shiftValue)]) }
+                  run
 
         Instructions.Leave  -> do
           {-

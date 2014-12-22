@@ -32,6 +32,13 @@ parseInstruction lineNumber text =
     ["Geq"]         -> Right $ I.Nullary I.Geq
     ["Leq"]         -> Right $ I.Nullary I.Leq
     ["Neg"]         -> Right $ I.Nullary I.Neg
+    ["Malloc"]      -> Right $ I.Nullary I.Malloc
+    ["Offset"]      -> Right $ I.Nullary I.Offset
+    ["StoI"]        -> Right $ I.Nullary I.StoI
+    ["LoadI"]       -> Right $ I.Nullary I.LoadI
+    ["Pop"]         -> Right $ I.Nullary I.Pop
+    ["ShiftL"]      -> Right $ I.Nullary I.ShiftL
+    ["ShiftR"]      -> Right $ I.Nullary I.ShiftR
     ["Load", a, b]  ->
       let a' = B.readInteger a
           b' = B.readInteger b
